@@ -1,0 +1,32 @@
+name: Docker Image Build Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+    - uses: actions/checkout@v2
+    - name: Build a Docker image
+      run: docker build -t ${{github.repository}} .
+      
+    - name: Run Snyk to check Docker image for vulnerabilities
+      continue-on-error: false
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: ${{github.repository}}
+        args: --file=Dockerfile
+        
+    - name: Upload result to GitHub Code Scanning
+      if: ${{ always() }}
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: snyk.sarif
